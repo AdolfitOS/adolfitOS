@@ -1,56 +1,67 @@
 // AdolfitOS - Sistema de Gestión de ESP32
 let port, esploader, transport;
 
-async function conectar() {
-    const terminal = document.getElementById('serial-output');
-    try {
-        if (typeof window.esptool === 'undefined') {
-            terminal.innerHTML += "Error: Librería no cargada.\n";
-            return;
-        }
+async function conectarDispositivo() {
+    const terminal = document.getElementById('console');
+    
+    // Verificamos si la librería ya cargó en el navegador
+    if (typeof window.esptool === 'undefined') {
+        terminal.innerHTML += `<span style="color:red">[ERROR] La librería externa aún no ha cargado. Reintenta en 2 segundos.</span>\n`;
+        return;
+    }
 
+    try {
         port = await navigator.serial.requestPort();
         await port.open({ baudRate: 115200 });
         
-        terminal.innerHTML += "Conectado al puerto. Sincronizando...\n";
+        terminal.innerHTML += `[SISTEMA] Puerto abierto. Sincronizando placa...\n`;
 
         transport = new window.esptool.Transport(port);
         esploader = new window.esptool.ESPLoader(transport, 115200);
+
+        // handshake con el chip
         await esploader.main_fn();
 
-        // Identificación
-        const chip = await esploader.chip.get_chip_description();
-        const mac = await esploader.chip.read_mac();
+        const chipName = await esploader.chip.get_chip_description();
+        const macAddr = await esploader.chip.read_mac();
 
-        document.getElementById('chip-model').innerText = chip;
-        document.getElementById('mac-address').innerText = mac;
-        document.getElementById('status-text').innerText = "Conectado";
-        document.getElementById('status-text').style.color = "#39ff14";
+        // Actualizar la interfaz (Usando tus IDs originales)
+        document.getElementById('chip-model').innerText = chipName;
+        document.getElementById('mac-address').innerText = macAddr;
+        document.getElementById('status').innerText = "Conectado";
+        document.getElementById('status').style.color = "#39ff14";
 
-        terminal.innerHTML += `Detectado: ${chip} | MAC: ${mac}\n`;
-        leer();
+        terminal.innerHTML += `[OK] Detectado: ${chipName} | MAC: ${macAddr}\n`;
 
-    } catch (e) {
-        terminal.innerHTML += "Error de conexión o cancelado.\n";
+        leerMonitor();
+
+    } catch (err) {
+        terminal.innerHTML += `<span style="color:orange">[SISTEMA] Error: ${err.message}</span>\n`;
     }
 }
 
-async function leer() {
-    const terminal = document.getElementById('serial-output');
-    const decoder = new TextDecoder();
+async function leerMonitor() {
+    const terminal = document.getElementById('console');
+    const textDecoder = new TextDecoder();
+
     while (port && port.readable) {
         const reader = port.readable.getReader();
         try {
             while (true) {
                 const { value, done } = await reader.read();
                 if (done) break;
-                terminal.innerText += decoder.decode(value);
+                terminal.innerText += textDecoder.decode(value);
                 terminal.scrollTop = terminal.scrollHeight;
             }
-        } finally { reader.releaseLock(); }
+        } catch (error) {
+            break;
+        } finally {
+            reader.releaseLock();
+        }
     }
 }
 
-// Vincular botones con los IDs del nuevo HTML
-document.getElementById('btn-conectar').onclick = conectar;
+// Vinculamos el botón al cargar el script
+document.getElementById('connectBtn').onclick = conectarDispositivo;
+
 
