@@ -1,107 +1,56 @@
 // AdolfitOS - Sistema de Gestión de ESP32
-let port;
-let reader;
-let esploader;
-let transport;
+let port, esploader, transport;
 
-// 1. FUNCIÓN DE CONEXIÓN E IDENTIFICACIÓN
-async function conectarDispositivo() {
-    const terminal = document.getElementById('console'); // ID corregido para tu HTML
-    
+async function conectar() {
+    const terminal = document.getElementById('serial-output');
     try {
         if (typeof window.esptool === 'undefined') {
-            terminal.innerHTML += `<span style="color:red">[ERROR] La librería no cargó.</span>\n`;
+            terminal.innerHTML += "Error: Librería no cargada.\n";
             return;
         }
 
         port = await navigator.serial.requestPort();
         await port.open({ baudRate: 115200 });
         
-        terminal.innerHTML += `<span style="color:#39ff14">[SISTEMA] Sincronizando placa...</span>\n`;
+        terminal.innerHTML += "Conectado al puerto. Sincronizando...\n";
 
         transport = new window.esptool.Transport(port);
         esploader = new window.esptool.ESPLoader(transport, 115200);
-
         await esploader.main_fn();
 
-        const chipName = await esploader.chip.get_chip_description();
-        const macAddr = await esploader.chip.read_mac();
+        // Identificación
+        const chip = await esploader.chip.get_chip_description();
+        const mac = await esploader.chip.read_mac();
 
-        // Actualizar la interfaz con los IDs de tu HTML
-        document.getElementById('chip-model').innerText = chipName;
-        document.getElementById('mac-address').innerText = macAddr;
-        document.getElementById('status').innerText = "Conectado";
+        document.getElementById('chip-model').innerText = chip;
+        document.getElementById('mac-address').innerText = mac;
+        document.getElementById('status-text').innerText = "Conectado";
+        document.getElementById('status-text').style.color = "#39ff14";
 
-        terminal.innerHTML += `<span style="color:#39ff14">[OK] ${chipName} detectado. MAC: ${macAddr}</span>\n`;
+        terminal.innerHTML += `Detectado: ${chip} | MAC: ${mac}\n`;
+        leer();
 
-        leerMonitor();
-
-    } catch (err) {
-        terminal.innerHTML += `<span style="color:orange">[SISTEMA] Conexión cancelada.</span>\n`;
+    } catch (e) {
+        terminal.innerHTML += "Error de conexión o cancelado.\n";
     }
 }
 
-// 2. FUNCIÓN DE MONITOREO SERIAL
-async function leerMonitor() {
-    const terminal = document.getElementById('console'); // ID corregido
-    const textDecoder = new TextDecoder();
-
+async function leer() {
+    const terminal = document.getElementById('serial-output');
+    const decoder = new TextDecoder();
     while (port && port.readable) {
-        reader = port.readable.getReader();
+        const reader = port.readable.getReader();
         try {
             while (true) {
                 const { value, done } = await reader.read();
                 if (done) break;
-                terminal.innerText += textDecoder.decode(value);
+                terminal.innerText += decoder.decode(value);
                 terminal.scrollTop = terminal.scrollHeight;
             }
-        } catch (error) {
-            terminal.innerHTML += `\n[SISTEMA] Lectura pausada.\n`;
-        } finally {
-            reader.releaseLock();
-        }
+        } finally { reader.releaseLock(); }
     }
 }
 
-// 3. FUNCIÓN DE FLASHEO
-async function instalarFirmware() {
-    const terminal = document.getElementById('console'); // ID corregido
-    
-    if (!esploader) {
-        alert("Primero conecta el dispositivo");
-        return;
-    }
+// Vincular botones con los IDs del nuevo HTML
+document.getElementById('btn-conectar').onclick = conectar;
 
-    try {
-        terminal.innerHTML += `\n<span style="color:yellow">[FLASHEO] Descargando firmware.bin...</span>\n`;
-        
-        const response = await fetch('firmware.bin');
-        if (!response.ok) throw new Error("Archivo .bin no encontrado en el servidor.");
-        
-        const contents = await response.arrayBuffer();
-        const data = new Uint8Array(contents);
-
-        await esploader.write_flash({
-            fileArray: [{ data: data, address: 0x1000 }],
-            flashSize: 'keep',
-            flashMode: 'keep',
-            flashFreq: 'keep',
-            eraseAll: false,
-            compress: true,
-            reportProgress: (curr, total) => {
-                const porcentaje = Math.round((curr / total) * 100);
-                terminal.innerText = terminal.innerText.split('[PROGRESO]')[0] + `[PROGRESO] Instalando: ${porcentaje}%`;
-            }
-        });
-
-        terminal.innerHTML += `\n<span style="color:#39ff14">[ÉXITO] AdolfitOS instalado correctamente.</span>\n`;
-        await esploader.hard_reset();
-
-    } catch (err) {
-        terminal.innerHTML += `\n<span style="color:red">[ERROR] ${err.message}</span>\n`;
-    }
-}
-
-// 4. VINCULACIÓN CON TUS IDs DE HTML (Corregido)
-document.getElementById('connectBtn').onclick = conectarDispositivo;
-document.getElementById('flashMain').onclick = instalarFirmware;
