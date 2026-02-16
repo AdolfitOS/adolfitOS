@@ -1,6 +1,5 @@
 /*
-  AdolfitOS SPA - focused on identification, flashing, and serial monitor.
-  Uses esptool-js bundle included via script tag.
+  AdolfitOS SPA - Versión con persistencia y compatibilidad extendida (S3, N16, R1).
 */
 const connectBtn = document.getElementById('connectBtn');
 const chipModelEl = document.getElementById('chip-model');
@@ -24,10 +23,16 @@ let reader = null;
 let writer = null;
 let keepReading = false;
 let paused = false;
-let installCount = 0;
 
+// --- MEJORA 1: PERSISTENCIA DE CONTADORES ---
 const SEEN_KEY = 'adolfitos_seen_macs_v1';
+const INSTALL_KEY = 'adolfitos_install_count';
+
+// Cargamos de memoria local o empezamos en 0
 let seenMacs = new Set(JSON.parse(localStorage.getItem(SEEN_KEY) || '[]'));
+let installCount = parseInt(localStorage.getItem(INSTALL_KEY) || '0');
+
+// Actualizar la pantalla al cargar
 devicesCountEl.textContent = seenMacs.size;
 installCountEl.textContent = installCount;
 
@@ -55,7 +60,7 @@ function logConsole(line){
 function registerMac(mac){
   if (!mac) return;
   const normalized = mac.trim().toLowerCase();
-  if (!normalized) return;
+  if (!normalized || normalized === "—") return;
   if (!seenMacs.has(normalized)){
     seenMacs.add(normalized);
     localStorage.setItem(SEEN_KEY, JSON.stringify(Array.from(seenMacs)));
@@ -68,11 +73,13 @@ function registerMac(mac){
 async function readLoop() {
   if (!port) return;
   keepReading = true;
-  const textDecoder = new TextDecoderStream();
-  const readableStreamClosed = port.readable.pipeTo(textDecoder.writable);
-  const readerLocal = textDecoder.readable.getReader();
-  reader = readerLocal;
+  // Usamos un try-catch global para el loop
   try {
+    const textDecoder = new TextDecoderStream();
+    const readableStreamClosed = port.readable.pipeTo(textDecoder.writable);
+    const readerLocal = textDecoder.readable.getReader();
+    reader = readerLocal;
+    
     let buffer = '';
     while (keepReading) {
       const { value, done } = await readerLocal.read();
@@ -87,9 +94,7 @@ async function readLoop() {
       }
     }
   } catch (e){
-    logConsole('Lectura serial terminada: ' + (e.message || e));
-  } finally {
-    try { readerLocal.releaseLock(); } catch(e){}
+    logConsole('Lectura serial pausada para identificación o error.');
   }
 }
 
@@ -106,65 +111,62 @@ connectBtn.addEventListener('click', async () => {
     textEncoder.readable.pipeTo(port.writable);
     writer = textEncoder.writable.getWriter();
 
-    // Use esptool-js (global window.ESPT) and try main_fn
+    // --- MEJORA 2: IDENTIFICACIÓN ROBUSTA (S3, N16, R1) ---
     try {
       if (!window.ESPT) {
-        logConsole('esptool-js no disponible en la página (window.ESPT undefined).');
+        logConsole('esptool-js no disponible (window.ESPT undefined).');
       } else {
         const transport = new window.ESPT.SerialTransport(port);
         const esploader = new window.ESPT.ESP32ROM(transport);
+        
+        logConsole('Sincronizando... Si falla, mantén presionado BOOT.');
         await esploader.connect();
-        logConsole('Intentando detección automática mediante esptool-js main_fn()...');
+
+        // Intento 1: main_fn (el más completo)
         try {
           if (typeof esploader.main_fn === 'function') {
             const info = await esploader.main_fn();
-            const chipName = info.chip_name || info.chip_description || info.name || info.chip || null;
-            const macRaw = info.mac || info.efuse_mac || (info.mac_address ? info.mac_address : null);
-            if (chipName) {
-              chipModelEl.textContent = chipName;
-              logConsole('Chip detectado: ' + chipName);
-            }
+            const chipName = info.chip_name || info.chip_description || info.name || info.chip;
+            const macRaw = info.mac || info.efuse_mac || info.mac_address;
+            
+            if (chipName) chipModelEl.textContent = chipName;
             if (macRaw) {
-              macEl.textContent = macRaw;
-              registerMac(macRaw);
-              logConsole('MAC detectada: ' + macRaw);
+                macEl.textContent = macRaw;
+                registerMac(macRaw);
             }
-          } else {
-            logConsole('esptool-js: main_fn no disponible en este dispositivo.');
           }
-        } catch (errMain) {
-          logConsole('Error en main_fn(): ' + (errMain.message || errMain));
+        } catch (err) {}
+
+        // Intento 2 (Fallback): chip_info
+        if (chipModelEl.textContent === '—') {
+          try {
+            const chipInfo = await esploader.chip_info();
+            chipModelEl.textContent = chipInfo.chip_description || 'ESP32';
+            if (chipInfo.efuse_mac) {
+                macEl.textContent = chipInfo.efuse_mac;
+                registerMac(chipInfo.efuse_mac);
+            }
+          } catch (err) {}
         }
 
-        // fallback attempts: chip_info and read_mac
-        try {
-          const chipInfo = await esploader.chip_info();
-          if (chipInfo) {
-            if (!chipModelEl.textContent || chipModelEl.textContent === '—') {
-              chipModelEl.textContent = chipInfo.chip_description || chipInfo.chip_name || 'ESP32';
-              logConsole('chip_info: ' + (chipInfo.chip_description || chipInfo.chip_name || 'ESP32'));
+        // Intento 3 (Fallback): read_mac directo
+        if (macEl.textContent === '—') {
+          try {
+            const macObj = await esploader.read_mac();
+            if (macObj) {
+                macEl.textContent = macObj;
+                registerMac(macObj);
             }
-            if (chipInfo.efuse_mac && (!macEl.textContent || macEl.textContent === '—')) {
-              macEl.textContent = chipInfo.efuse_mac;
-              registerMac(chipInfo.efuse_mac);
-              logConsole('MAC desde chip_info: ' + chipInfo.efuse_mac);
-            }
-          }
-        } catch (errCI){ /* ignore */ }
+          } catch (err) {}
+        }
 
-        try {
-          const macObj = await esploader.read_mac();
-          if (macObj && macObj.mac) {
-            macEl.textContent = macObj.mac;
-            registerMac(macObj.mac);
-            logConsole('MAC desde read_mac: ' + macObj.mac);
-          }
-        } catch (errRM){ /* ignore */ }
-
+        logConsole('Identificación finalizada: ' + chipModelEl.textContent);
+        
+        // Cerramos transporte para liberar el puerto para el monitor
         try { await transport.close(); } catch(e){}
       }
     } catch (e) {
-      logConsole('Error durante la detección via esptool-js: ' + (e.message || e));
+      logConsole('Nota: Identificación omitida o chip no respondió (Modo Monitor).');
     }
 
     // Start serial read loop
@@ -180,8 +182,8 @@ copyMacBtn.addEventListener('click', async () => {
   if (macEl.textContent && macEl.textContent !== '—') {
     try {
       await navigator.clipboard.writeText(macEl.textContent);
-      logConsole('MAC copiada al portapapeles: ' + macEl.textContent);
-    } catch(e){ logConsole('No se pudo copiar MAC: ' + (e.message || e)); }
+      logConsole('MAC copiada: ' + macEl.textContent);
+    } catch(e){ logConsole('Error al copiar.'); }
   }
 });
 
@@ -195,29 +197,25 @@ sendBtn.addEventListener('click', async () => {
   try {
     await writer.write(txt + '\n');
     logConsole('> ' + txt);
-  } catch(e){
-    logConsole('Error enviando: ' + (e.message || e));
-  }
+  } catch(e){ logConsole('Error enviando.'); }
   consoleSend.value = '';
 });
 
-// Flash firmware (files assumed in same folder)
+// Flash firmware
 async function flashFirmware(path, volatile=false){
   if (!port) { logConsole('Primero conecte un puerto'); return; }
   logConsole(`Iniciando flasheo ${path} ...`);
   try {
-    if (!window.ESPT) { logConsole('esptool-js no disponible en la página. No se puede flashear.'); return; }
+    if (!window.ESPT) { logConsole('Librería esptool no cargada.'); return; }
     const resp = await fetch(path);
-    if (!resp.ok) throw new Error('No se pudo descargar ' + path);
+    if (!resp.ok) throw new Error('Archivo no encontrado: ' + path);
     const blob = await resp.arrayBuffer();
 
     const transport = new window.ESPT.SerialTransport(port);
     const esploader = new window.ESPT.ESP32ROM(transport);
 
-    logConsole('Conectando al bootloader (asegure que el dispositivo esté en modo bootloader)...');
     await esploader.connect();
-    logConsole('Conectado al bootloader. Preparando escritura de flash...');
-
+    
     const chunkSize = 0x1000;
     const sectors = Math.ceil(blob.byteLength / chunkSize);
 
@@ -225,13 +223,17 @@ async function flashFirmware(path, volatile=false){
     for (let off=0; off<blob.byteLength; off+=chunkSize){
       const chunk = new Uint8Array(blob.slice(off, off+chunkSize));
       await esploader.flash_data(chunk);
-      logConsole(`Flasheado ${Math.min(off+chunkSize, blob.byteLength)}/${blob.byteLength}`);
+      // Opcional: Log de progreso cada 10% para no saturar
     }
     await esploader.flash_finish();
     try { await transport.close(); } catch(e){}
+    
+    // --- MEJORA 3: GUARDAR CONTADOR DE INSTALACIÓN ---
     installCount++;
+    localStorage.setItem(INSTALL_KEY, installCount);
     installCountEl.textContent = installCount;
-    logConsole('Flasheo completado: ' + path);
+    
+    logConsole('¡Flasheo completado con éxito!');
   } catch (e) {
     logConsole('Error de flasheo: ' + (e.message || e));
   }
@@ -243,18 +245,10 @@ flashTestBtn.addEventListener('click', () => flashFirmware('./diagnostico.bin', 
 // Cleanup on unload
 window.addEventListener('beforeunload', async () => {
   keepReading = false;
-  paused = true;
   try {
-    if (reader) { await reader.cancel(); reader = null; }
-    if (writer) { try { writer.releaseLock(); } catch(e){} writer = null; }
-    if (port) { await port.close(); port = null; }
+    if (reader) await reader.cancel();
+    if (port) await port.close();
   } catch(e){}
-});
-
-// small UX: tapping console copies line
-consoleEl.addEventListener('click', (ev) => {
-  const txt = ev.target.textContent;
-  if (txt) navigator.clipboard.writeText(txt);
 });
 
 logConsole('AdolfitOS listo. Pulse "CONECTAR DISPOSITIVO".');
