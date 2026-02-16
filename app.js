@@ -6,51 +6,44 @@ let transport;
 
 // 1. FUNCIÓN DE CONEXIÓN E IDENTIFICACIÓN
 async function conectarDispositivo() {
-    const terminal = document.getElementById('serial-output');
+    const terminal = document.getElementById('console'); // ID corregido para tu HTML
     
     try {
-        // Verificación de la librería esptool-js
         if (typeof window.esptool === 'undefined') {
-            terminal.innerHTML += `<span style="color:red">[ERROR] La librería de flasheo no cargó. Verifica tu conexión a internet e index.html</span>\n`;
+            terminal.innerHTML += `<span style="color:red">[ERROR] La librería no cargó.</span>\n`;
             return;
         }
 
-        // Solicitar puerto al usuario
         port = await navigator.serial.requestPort();
         await port.open({ baudRate: 115200 });
         
-        terminal.innerHTML += `<span style="color:#39ff14">[SISTEMA] Puerto abierto. Sincronizando...</span>\n`;
+        terminal.innerHTML += `<span style="color:#39ff14">[SISTEMA] Sincronizando placa...</span>\n`;
 
-        // Inicializar el transporte y el cargador
         transport = new window.esptool.Transport(port);
         esploader = new window.esptool.ESPLoader(transport, 115200);
 
-        // Paso crítico: Sincronizar con el chip (Apretón de manos)
         await esploader.main_fn();
 
-        // Extraer datos del hardware
         const chipName = await esploader.chip.get_chip_description();
         const macAddr = await esploader.chip.read_mac();
 
-        // Actualizar la interfaz (Los campos que antes quedaban vacíos)
+        // Actualizar la interfaz con los IDs de tu HTML
         document.getElementById('chip-model').innerText = chipName;
         document.getElementById('mac-address').innerText = macAddr;
-        document.getElementById('status-text').innerText = "Conectado";
+        document.getElementById('status').innerText = "Conectado";
 
-        terminal.innerHTML += `<span style="color:#39ff14">[OK] Detectado: ${chipName} | MAC: ${macAddr}</span>\n`;
+        terminal.innerHTML += `<span style="color:#39ff14">[OK] ${chipName} detectado. MAC: ${macAddr}</span>\n`;
 
-        // Iniciar el monitor para recibir texto de la placa
         leerMonitor();
 
     } catch (err) {
-        console.error(err);
-        terminal.innerHTML += `<span style="color:orange">[SISTEMA] Error o Conexión cancelada: ${err.message}</span>\n`;
+        terminal.innerHTML += `<span style="color:orange">[SISTEMA] Conexión cancelada.</span>\n`;
     }
 }
 
-// 2. FUNCIÓN DE MONITOREO SERIAL (LECTURA)
+// 2. FUNCIÓN DE MONITOREO SERIAL
 async function leerMonitor() {
-    const terminal = document.getElementById('serial-output');
+    const terminal = document.getElementById('console'); // ID corregido
     const textDecoder = new TextDecoder();
 
     while (port && port.readable) {
@@ -59,41 +52,35 @@ async function leerMonitor() {
             while (true) {
                 const { value, done } = await reader.read();
                 if (done) break;
-                const deco = textDecoder.decode(value);
-                terminal.innerText += deco;
-                // Auto-scroll hacia abajo
+                terminal.innerText += textDecoder.decode(value);
                 terminal.scrollTop = terminal.scrollHeight;
             }
         } catch (error) {
-            terminal.innerHTML += `\n[SISTEMA] Lectura interrumpida.\n`;
+            terminal.innerHTML += `\n[SISTEMA] Lectura pausada.\n`;
         } finally {
             reader.releaseLock();
         }
     }
 }
 
-// 3. FUNCIÓN DE FLASHEO (INSTALAR ADOLFitos)
+// 3. FUNCIÓN DE FLASHEO
 async function instalarFirmware() {
-    const terminal = document.getElementById('serial-output');
+    const terminal = document.getElementById('console'); // ID corregido
     
     if (!esploader) {
-        alert("Primero conecta tu ESP32");
+        alert("Primero conecta el dispositivo");
         return;
     }
 
     try {
-        terminal.innerHTML += `\n<span style="color:yellow">[FLASHEO] Descargando firmware.bin desde GitHub...</span>\n`;
+        terminal.innerHTML += `\n<span style="color:yellow">[FLASHEO] Descargando firmware.bin...</span>\n`;
         
-        // Descarga el archivo .bin del mismo lugar donde está la web
         const response = await fetch('firmware.bin');
-        if (!response.ok) throw new Error("No se encontró el archivo firmware.bin en el servidor.");
+        if (!response.ok) throw new Error("Archivo .bin no encontrado en el servidor.");
         
         const contents = await response.arrayBuffer();
         const data = new Uint8Array(contents);
 
-        terminal.innerHTML += `[FLASHEO] Borrando y escribiendo... No desconectes la placa.\n`;
-
-        // Proceso de escritura en la dirección 0x1000 (estándar ESP32)
         await esploader.write_flash({
             fileArray: [{ data: data, address: 0x1000 }],
             flashSize: 'keep',
@@ -103,22 +90,18 @@ async function instalarFirmware() {
             compress: true,
             reportProgress: (curr, total) => {
                 const porcentaje = Math.round((curr / total) * 100);
-                // Actualizar línea de progreso en el monitor
-                terminal.innerText = terminal.innerText.substring(0, terminal.innerText.lastIndexOf("[PROGRESO]")) + 
-                                     `[PROGRESO] Instalando AdolfitOS: ${porcentaje}%`;
+                terminal.innerText = terminal.innerText.split('[PROGRESO]')[0] + `[PROGRESO] Instalando: ${porcentaje}%`;
             }
         });
 
-        terminal.innerHTML += `\n<span style="color:#39ff14">[ÉXITO] Instalación terminada. Reiniciando dispositivo...</span>\n`;
-        
-        // Reinicio automático de la placa
+        terminal.innerHTML += `\n<span style="color:#39ff14">[ÉXITO] AdolfitOS instalado correctamente.</span>\n`;
         await esploader.hard_reset();
 
     } catch (err) {
-        terminal.innerHTML += `\n<span style="color:red">[ERROR] Fallo en el flasheo: ${err.message}</span>\n`;
+        terminal.innerHTML += `\n<span style="color:red">[ERROR] ${err.message}</span>\n`;
     }
 }
 
-// 4. ASIGNACIÓN DE BOTONES (Asegúrate de que los IDs en el HTML coincidan)
-document.getElementById('btn-conectar').addEventListener('click', conectarDispositivo);
-document.querySelector('.btn-primary').addEventListener('click', instalarFirmware);
+// 4. VINCULACIÓN CON TUS IDs DE HTML (Corregido)
+document.getElementById('connectBtn').onclick = conectarDispositivo;
+document.getElementById('flashMain').onclick = instalarFirmware;
