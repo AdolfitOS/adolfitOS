@@ -1,41 +1,49 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AdolfitOS - Panel de Control</title>
-    <link rel="stylesheet" href="styles.css">
-    <script src="https://unpkg.com/esptool-js@0.1.0/bundle.js"></script>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>AdolfitOS</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://unpkg.com/esptool-js@0.1.0/bundle.js"></script>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>AdolfitOS</h1>
-            <button id="btn-conectar" class="btn-conectar">CONECTAR DISPOSITIVO</button>
-        </header>
+  <div id="app">
+    <header class="header">
+      <h1 class="title">AdolfitOS</h1>
+      <button id="connectBtn" class="btn connect-btn">CONECTAR DISPOSITIVO</button>
+    </header>
 
-        <div class="grid">
-            <section class="card">
-                <h2>Identificación</h2>
-                <p>Modelo: <span id="chip-model">—</span></p>
-                <p>MAC: <span id="mac-address">—</span></p>
-                <p>Estado: <span id="status-text">Desconectado</span></p>
-            </section>
-
-            <section class="card">
-                <h2>Flasheo</h2>
-                <button id="btn-instalar" class="btn-primary">INSTALAR FIRMWARE ADOLFITOS</button>
-                <div class="stats">
-                    <p>Instalaciones: <span id="install-count">0</span></p>
-                </div>
-            </section>
+    <main class="main-grid">
+      <section class="card ident-card">
+        <h2 class="card-title">Identificación</h2>
+        <div class="info">
+          <div class="info-row"><label>Modelo:</label><span id="chip-model">—</span></div>
+          <div class="info-row">
+            <label>MAC:</label>
+            <span id="mac-address">—</span>
+          </div>
+          <div class="info-row"><label>Estado:</label><span id="status">Desconectado</span></div>
         </div>
+      </section>
 
-        <section class="console-card">
-            <h2>Monitor Serial de Diagnóstico</h2>
-            <div id="serial-output" class="terminal"></div>
-        </section>
-    </div>
-    <script src="app.js"></script>
+      <section class="card flash-card">
+        <h2 class="card-title">Flasheo</h2>
+        <div class="btn-row">
+          <button id="flashMain" class="btn primary">INSTALAR FIRMWARE ADOLFITOS</button>
+        </div>
+        <div class="counters">
+          <div>Instalaciones: <strong id="installCount">0</strong></div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="console-card">
+      <div class="card-title">Monitor Serial de Diagnóstico</div>
+      <div id="console" class="console" style="height: 200px; overflow-y: auto; background: #000; color: #39ff14; padding: 10px; font-family: monospace;"></div>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
 </body>
 </html>
