@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>AdolfitOS</title>
+  <link rel="stylesheet" href="styles.css" />
+  <!-- esptool-js bundle required -->
+  <script src="https://unpkg.com/esptool-js@0.1.0/bundle.js"></script>
+</head>
+<body>
+  <div id="app">
+    <header class="header">
+      <h1 class="title">AdolfitOS</h1>
+      <button id="connectBtn" class="btn connect-btn">CONECTAR DISPOSITIVO</button>
+    </header>
+
+    <main class="main-grid">
+      <section class="card ident-card">
+        <h2 class="card-title">Identificación</h2>
+        <div class="info">
+          <div class="info-row"><label>Modelo:</label><span id="chip-model">—</span></div>
+          <div class="info-row">
+            <label>MAC:</label>
+            <span id="mac-address">—</span>
+            <button id="copyMac" class="icon-btn" title="Copiar MAC">📋</button>
+          </div>
+          <div class="info-row"><label>Estado:</label><span id="status">Desconectado</span></div>
+        </div>
+      </section>
+
+      <section class="card flash-card">
+        <h2 class="card-title">Flasheo</h2>
+        <div class="btn-row">
+          <button id="flashMain" class="btn primary">INSTALAR FIRMWARE ADOLFITOS</button>
+          <button id="flashTest" class="btn outline">EJECUTAR TEST SERIAL (VOLÁTIL)</button>
+        </div>
+        <div class="counters">
+          <div>Instalaciones Realizadas: <strong id="installCount">0</strong></div>
+          <div>Dispositivos Identificados: <strong id="devicesCount">0</strong></div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="console-card">
+      <div class="card-title">Monitor Serial de Diagnóstico</div>
+      <div id="console" class="console"></div>
+      <div class="console-input">
+        <input id="consoleSend" placeholder="Enviar comando serial..." />
+        <button id="sendBtn" class="btn small primary">Enviar</button>
+      </div>
+      <div class="console-controls">
+        <button id="clearConsole" class="icon-btn">🗑️</button>
+        <button id="pauseLog" class="icon-btn">⏸️</button>
+      </div>
+    </footer>
+  </div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
