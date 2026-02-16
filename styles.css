@@ -1,0 +1,62 @@
+:root{
+  --bg:#0a0a0a;
+  --card:#0f0f10;
+  --muted:#a6a6a6;
+  --neon:#39ff14; /* green neon */
+  --orange:#ff8c00; /* orange space */
+  --accent:#111111;
+  font-family: "Roboto", "Inter", system-ui, -apple-system, "Segoe UI", Arial;
+}
+*{box-sizing:border-box}
+html,body,#app{height:100%;margin:0;background:var(--bg);color:var(--muted)}
+#app{display:flex;flex-direction:column;padding:14px;gap:12px;height:100vh}
+
+/* Header */
+.header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.title{
+  font-family: "Orbitron", "Roboto", sans-serif;
+  font-weight:700;
+  letter-spacing:1px;
+  font-size:22px;
+  background: linear-gradient(90deg, var(--orange), var(--neon));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  margin:0;
+}
+.connect-btn{
+  padding:12px 18px;
+  border-radius:10px;
+  background:linear-gradient(90deg,var(--neon),#75ff6a);
+  color:#001100;
+  font-weight:700;
+  border:0;
+  cursor:pointer;
+  box-shadow:0 8px 24px rgba(57,255,20,0.06);
+}
+
+/* Layout */
+.main-grid{display:flex;gap:12px}
+.ident-card{flex:1;padding:12px;border-radius:10px;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.02));border:1px solid rgba(255,255,255,0.03)}
+.flash-card{flex:1;padding:12px;border-radius:10px;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.02));border:1px solid rgba(255,255,255,0.03)}
+.card-title{color:var(--orange);font-weight:700;margin-bottom:8px}
+
+.info-row{display:flex;align-items:center;gap:8px;padding:8px 0;color:var(--muted);font-size:14px}
+.icon-btn{background:transparent;border:0;color:var(--neon);font-size:16px;padding:6px;border-radius:6px}
+.btn{padding:10px 12px;border-radius:8px;border:0;cursor:pointer}
+.btn.primary{background:linear-gradient(90deg,var(--neon),#7fff5a);color:#001100;font-weight:700}
+.btn.outline{background:transparent;border:1px solid rgba(255,140,0,0.12);color:var(--orange);font-weight:700}
+.btn.small{padding:8px 10px}
+
+/* Console */
+.console-card{padding:10px;border-radius:10px;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.02));border:1px solid rgba(255,255,255,0.03);display:flex;flex-direction:column;gap:8px}
+.console{background:rgba(0,0,0,0.25);border-radius:8px;padding:8px;height:160px;overflow:auto;font-family:monospace;font-size:13px;color:#bfffc7}
+.console-input{display:flex;gap:8px}
+.console-input input{flex:1;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.03);background:transparent;color:var(--muted)}
+.console-controls{display:flex;gap:8px;justify-content:flex-end}
+
+/* Responsive */
+@media(max-width:720px){
+  .main-grid{flex-direction:column}
+  .header{flex-direction:column;align-items:flex-start;gap:10px}
+}
