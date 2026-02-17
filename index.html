@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>AdolfitOS</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div id="app">
+    <header class="app-header">
+      <h1 class="title-main">AdolfitOS</h1>
+    </header>
+
+    <main class="layout-main">
+      <section class="panel panel-description">
+        <h2>Plataforma</h2>
+        <p>
+          AdolfitOS es un entorno optimizado para programar, flashear y monitorear dispositivos
+          ESP32 (clásica, S3, C3 y N16) desde tu navegador.
+        </p>
+        <p>
+          Conecta tu dispositivo, identifica el modelo y la MAC, instala el firmware y sigue los
+          logs en tiempo real con el monitor serial integrado.
+        </p>
+      </section>
+
+      <section class="panel panel-status">
+        <h2>Estado de conexión</h2>
+        <div class="status-row">
+          <span>Web Serial:</span>
+          <span id="serial-support" class="badge">-</span>
+        </div>
+        <div class="status-row">
+          <span>Dispositivo:</span>
+          <span id="connection-status" class="badge badge-disconnected">Desconectado</span>
+        </div>
+        <div class="status-row">
+          <span>Chip:</span>
+          <span id="chip-model">-</span>
+        </div>
+        <div class="status-row">
+          <span>MAC:</span>
+          <span id="mac-address">-</span>
+        </div>
+        <div class="status-row">
+          <span>Locales Identificados:</span>
+          <span id="local-identified-count">0</span>
+        </div>
+        <div class="status-row">
+          <span>Locales Instalaciones:</span>
+          <span id="local-install-count">0</span>
+        </div>
+        <div class="status-row">
+          <span>Instalaciones Globales:</span>
+          <div id="global-counter" class="odometer">
+            <span class="digit">0</span>
+            <span class="digit">0</span>
+            <span class="digit">0</span>
+            <span class="digit">0</span>
+            <span class="digit">0</span>
+            <span class="digit">0</span>
+          </div>
+        </div>
+        <div class="status-actions">
+          <button id="btn-connect" class="btn primary">Conectar</button>
+          <label class="btn file-btn">
+            Firmware.bin
+            <input type="file" id="firmware-file" accept=".bin" />
+          </label>
+          <button id="btn-install" class="btn" disabled>Instalar</button>
+        </div>
+        <div class="status-logline" id="status-message">Listo.</div>
+      </section>
+    </main>
+
+    <section class="panel panel-serial">
+      <header class="serial-header">
+        <h2>Monitor Serial</h2>
+        <div class="serial-actions">
+          <button id="btn-clear-log" class="btn small">Limpiar</button>
+          <button id="btn-download-log" class="btn small">Descargar Log</button>
+        </div>
+      </header>
+      <div id="serial-output" class="serial-output"></div>
+      <div class="serial-input-bar">
+        <input
+          id="serial-input"
+          type="text"
+          placeholder="Escribe comando y Enter para enviar"
+          autocomplete="off"
+        />
+        <button id="btn-send-serial" class="btn small">Enviar</button>
+      </div>
+    </section>
+  </div>
+
+  <!-- esptool-js (obligatorio) se carga primero en modo script clásico -->
+  <script src="https://unpkg.com/esptool-js@0.1.0/bundle.js"></script>
+  <!-- Lógica principal de la SPA -->
+  <script src="./main.js"></script>
+</body>
+</html>
